@@ -1,8 +1,8 @@
 import {expect,test} from "bun:test";
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
-import { COUNTER_SIZE } from "./types";
-
+import { COUNTER_SIZE, CounterAccount, schema } from "./types";
+import * as borsh from "borsh";
 const secretKeyBase58 = process.env.SECRET_KEY_BASE58;
 if (!secretKeyBase58) {
   throw new Error("SECRET_KEY_BASE58 not found in .env");
@@ -26,11 +26,18 @@ test("Account is initialized",async ()=>{
     const createAccountTxn = new Transaction();
     createAccountTxn.add(ix);
     const signature = await connection.sendTransaction(createAccountTxn,[adminAccount,dataAccount]);
-    const data2 = await connection.confirmTransaction(signature);
-    console.log(data2);
-    console.log(dataAccount.publicKey.toBase58());
+    const data2 = await connection.confirmTransaction(signature, "finalized");
+    
+    // console.log(data2);
+    // console.log(dataAccount.publicKey.toBase58());
 
-
+    const dataAccountInfo = await connection.getAccountInfo(dataAccount.publicKey);
+    if(!dataAccountInfo){ 
+        throw new Error("Counter Account Data not found");
+    }
+    const counterData = borsh.deserialize(schema,dataAccountInfo?.data) as CounterAccount;
+    console.log(counterData.count);
+    expect(counterData.count).toBe(0);
 
 
 
